@@ -30,6 +30,20 @@ the tests in `tests/`.
   `hyperhdg/network.cxx` (HyperHDG assembles, net2as preconditions; built with
   `-DNETPRECOND_HYPERHDG=ON -DHYPERHDG_DIR=...`).
 
+## Simplest example
+
+`examples/laplacian.cxx` needs nothing but PETSc: it builds the graph Laplacian of an n x n
+grid with Dirichlet data on the box boundary and solves it with CG and net2as:
+
+```
+./build/laplacian -n 33 -net2as_cb_type q1 -net2as_p 3 -net2as_cb_trim
+```
+
+prints the iteration count and the residual history as JSON. `-net2as_p 3` is a 4 x 4 coarse
+grid; `-net2as_cb_trim` removes the coarse DoFs on the boundary, which makes q1 mode the
+reference method exactly (`tests/test_q1_net2as.py` checks that against the Python
+reference on the identical problem). Any PETSc option applies, `-pc_type none` for comparison.
+
 ## Build
 
 ```
@@ -38,5 +52,9 @@ cmake -B build && cmake --build build
 pip install -r requirements.txt && pip install -e .
 python -m pytest
 ```
+
+The tests pin the numerics: generation 1 against 2 (same coarse space, same CG history on
+a grid Laplacian) and 1 against 3 through `build/laplacian`, with the recorded histories in
+`tests/golden/`. Later pull requests slim the code against these.
 
 `spack.yaml` describes an environment with PETSc (hdf5, metis, mumps).

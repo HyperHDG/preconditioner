@@ -34,3 +34,10 @@ def cg_history(A, b, M, rtol=1e-10, maxiter=500):
     x, info = spla.cg(A, b, rtol=rtol, maxiter=maxiter, M=M, callback=cb)
     assert info == 0, f"cg did not converge (info={info})"
     return hist
+
+
+def rhs_sin(A, dirichlet):
+    """The right-hand side examples/laplacian.cxx uses: sin(1 + i), zero on Dirichlet nodes."""
+    b = np.sin(1.0 + np.arange(A.shape[0]))
+    b[dirichlet] = 0.0
+    return b

@@ -57,3 +57,6 @@ if(NETPRECOND_HYPERHDG)
   target_include_directories(network PRIVATE examples/hyperhdg)
   target_link_libraries(network HyperHDG net2as petsc_util)
 endif()
+
+add_executable(laplacian examples/laplacian.cxx)
+target_link_libraries(laplacian net2as petsc_util)
