@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "netprecond"
+version = "0.0.1"
+description = "Two-level additive Schwarz preconditioners for spatial network models: reference, optimized Python, and the PETSc implementation net2as"
+license = "LGPL-2.1-or-later"
+requires-python = ">=3.10"
+dependencies = ["numpy", "scipy", "h5py", "joblib"]
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[tool.setuptools]
+package-dir = { "" = "python" }
+packages = ["netprecond"]
