@@ -8,23 +8,25 @@ graph Laplacians, Timoshenko beam networks on graphs), in three generations:
    decomposition*, Math. Comp. 93 (2024), by Andreas Rupp. Q1 coarse space on a Cartesian
    grid, the hat supports as subdomains, scipy only. Frozen: it is the oracle of the tests.
 2. `python/netprecond/`: the Python tier. A `Decomposition` is data, the coarse basis and the
-   subdomains; `q1()` builds the reference's; `AdditiveSchwarz(A, dec)` is the two-level
-   preconditioner on any decomposition, factorized once, callable, scipy only. New
-   decompositions are prototyped here as functions returning that data. (This grew out of
-   jprecond.py, the 2025 rewrite of the reference that net2as was then written from; see the
-   git history.)
+   subdomains; `q1()` builds the reference's from the C++ library below; `AdditiveSchwarz(A,
+   dec)` is the two-level preconditioner on any decomposition, factorized once, callable, scipy
+   only. New decompositions are prototyped here as functions returning that data. (This grew
+   out of jprecond.py, the 2025 rewrite of the reference that net2as was then written from;
+   see the git history.)
+   `src/decomposition/`: the decompositions as PETSc-free C++ on arrays, one implementation
+   used by net2as and, through a nanobind binding, by the Python tier.
 3. `src/net2as.cxx`: the PETSc preconditioner `PCNet2AS` (`-pc_type net2as`, options
    `-net2as_*`): parallel, `cb_type q1` for the original numerics, `cb_type pu` for the new
    coarse spaces with graph-distance overlap and ParHIP/METIS partitions.
 
-Where this is going: the decompositions become one PETSc-free C++ library that net2as uses
-and that is bound to Python, so production and prototypes meet in the same `AdditiveSchwarz`.
-The C++ side is still the import from HyperHDG's `jprecond/ne9` branch; its slimming comes in
-pull requests guarded by the tests in `tests/`.
+Production and prototypes meet in the same `AdditiveSchwarz`. net2as itself is still the
+import from HyperHDG's `jprecond/ne9` branch; its slimming comes in pull requests guarded by
+the tests in `tests/`.
 
 ## Layout
 
-- `src/`: `net2as`, `petsc_util`, the optional `petsc_parhip` backend. CMake targets.
+- `src/`: `decomposition/` (the netdecomp library and its Python binding), `net2as`,
+  `petsc_util`, the optional `petsc_parhip` backend. CMake targets.
 - `python/netprecond/`: `decomposition.py` (the contract, `expand` for block dofs, `q1`),
   `schwarz.py` (`AdditiveSchwarz`), `pcg.py` (PCG with the Lanczos condition estimate),
   `problems.py` (graph Laplacians of `.geo.h5` networks), `reference/` (frozen),
@@ -78,14 +80,18 @@ numbers above are reproducible from a fresh clone.
 ## Build
 
 ```
-git submodule update --init                                # fiber_network and sweepplot, pinned
+git submodule update --init                                # fiber_network, sweepplot, nanobind, pinned
 pip install -r requirements.txt && pip install -e .        # in a venv on an externally managed Python
 export PKG_CONFIG_PATH=<petsc prefix>/lib/pkgconfig      # or PETSC_DIR / PETSC_ARCH
-cmake -B build && cmake --build build
-python -m pytest
+cmake -B build -DPython_EXECUTABLE=$(which python) && cmake --build build
+python -m pytest && (cd build && ctest)
 ```
 
-The examples and tests import the installed package; nothing is path-hacked.
+The build puts the Python binding of the decomposition library, `netprecond._decomposition`,
+into the package directory, so the editable install sees it. Without PETSc,
+`-DNETPRECOND_PETSC=OFF` builds the library, the binding and its C++ test only, which is all
+the Python tier needs. The examples and tests import the installed package; nothing is
+path-hacked.
 
 The tests pin the numerics to the frozen reference: the q1 decomposition has its coarse
 basis and its subdomains, `AdditiveSchwarz` on it has its CG history on a grid Laplacian, and

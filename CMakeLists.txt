@@ -3,6 +3,9 @@ project(netprecond CXX)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+option(NETPRECOND_PETSC "build net2as, petsc_util and the PETSc examples" ON)
+
+if(NETPRECOND_PETSC)
 # PETSc through pkg-config: set PKG_CONFIG_PATH to <petsc prefix>/lib/pkgconfig, or PETSC_DIR/PETSC_ARCH
 if(DEFINED ENV{PETSC_DIR})
   set(ENV{PKG_CONFIG_PATH} "$ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
@@ -26,6 +29,17 @@ add_executable(test_q1_hats tests/cxx/q1_hats.cxx)
 target_link_libraries(test_q1_hats netdecomp)
 target_include_directories(test_q1_hats PRIVATE src/decomposition)
 add_test(NAME q1_hats COMMAND test_q1_hats)
+
+# the Python binding of netdecomp: netprecond._decomposition, built into the package directory
+option(NETPRECOND_PYTHON "build the Python binding (nanobind submodule, Python headers)" ON)
+if(NETPRECOND_PYTHON)
+  find_package(Python 3.10 COMPONENTS Interpreter Development.Module REQUIRED)
+  add_subdirectory(submodules/nanobind EXCLUDE_FROM_ALL)
+  nanobind_add_module(_decomposition NB_STATIC src/decomposition/python.cxx)
+  target_link_libraries(_decomposition PRIVATE netdecomp)
+  target_include_directories(_decomposition PRIVATE src/decomposition)
+  set_target_properties(_decomposition PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/python/netprecond)
+endif()
 
 add_library(petsc_util src/petsc_util.cxx)
 target_link_libraries(petsc_util PUBLIC PkgConfig::PETSC MPI::MPI_CXX)
@@ -73,3 +87,4 @@ if(HDF5_FOUND)
 else()
   message(STATUS "HDF5 not found: skipping examples/laplacian")
 endif()
+endif()  # NETPRECOND_PETSC

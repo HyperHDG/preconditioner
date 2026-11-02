@@ -29,58 +29,23 @@ def expand(dec, block_size):
     return Decomposition(B, subdomains)
 
 
-def q1_hats(points, cells, eps=1e-10):
-    """Every tensor-product Q1 hat function of a Cartesian grid with cells[d] cells per axis
-    over the bounding box of the points, evaluated at the points: sparse (n_points, n_hats),
-    hats numbered with the first axis fastest. A point belongs to the cell it lies in with
-    tolerance eps on the lower side and is strictly inside on the upper, so points on the
-    upper box faces belong to no cell (the reference's convention)."""
-    d = len(cells)
-    x = np.asarray(points, dtype=float)[:, :d]
-    lo = x.min(axis=0)
-    h = (x.max(axis=0) - lo) / np.asarray(cells, dtype=float)
-    nodes_per_axis = np.asarray(cells) + 1
-    stride = np.cumprod(np.r_[1, nodes_per_axis[:-1]])          # flat hat index: i + n0 * (j + n1 * k)
-    rows, cols, vals = [], [], []
-    for cell in np.ndindex(*cells):
-        cell = np.asarray(cell)
-        inside = np.ones(len(x), dtype=bool)
-        for a in range(d):
-            s = x[:, a] - lo[a] + eps
-            inside &= (s > h[a] * cell[a]) & (s < h[a] * (cell[a] + 1))
-        idx = np.flatnonzero(inside)
-        if not len(idx):
-            continue
-        local = (x[idx] - lo) / h - cell                          # in [0, 1]^d
-        for corner in np.ndindex(*([2] * d)):
-            corner = np.asarray(corner)
-            value = np.prod(np.where(corner, local, 1.0 - local), axis=1)
-            rows.append(idx)
-            cols.append(np.full(len(idx), int(np.dot(cell + corner, stride))))
-            vals.append(value)
-    return sp.csr_matrix((np.concatenate(vals), (np.concatenate(rows), np.concatenate(cols))),
-                         shape=(len(x), int(np.prod(nodes_per_axis))))
-
-
 def q1(points, cells, eps=1e-10, support_eps=1e-14):
     """The decomposition of Görtz, Hellman, Målqvist (2024) as the reference implements it:
-    coarse space = the Q1 hats of the interior coarse nodes (zero on the box boundary, where
-    the data is Dirichlet); subdomains = the supports of all hats, boundary points removed.
-    A boundary point is one where no interior hat is positive. Node-based."""
-    cells = tuple(cells)
-    d = len(cells)
-    hats = q1_hats(points, cells, eps)
-    nodes_per_axis = np.asarray(cells) + 1
-    multi = np.array(list(np.ndindex(*nodes_per_axis[::-1])))[:, ::-1]   # flat index: first axis fastest
-    interior = np.all((multi > 0) & (multi < np.asarray(cells)), axis=1)
-    coarse = hats[:, np.flatnonzero(interior)]
-    boundary = np.asarray(coarse.sum(axis=1)).ravel() < eps
-    supports = hats.tolil()
-    supports[boundary, :] = 0
-    supports = supports.tocsc()
-    subdomains = []
-    for k in range(supports.shape[1]):
-        nj = np.flatnonzero(supports.getcol(k).toarray().ravel() > support_eps)
-        if len(nj):
-            subdomains.append(nj)
+    coarse space = the Q1 hats of the interior coarse nodes of a Cartesian grid over the
+    bounding box (zero on the box boundary, where the data is Dirichlet); subdomains = the
+    supports of all hats, boundary points removed. A boundary point is one where no interior
+    hat is positive. Node-based. The hats come from the C++ library (netprecond._decomposition)."""
+    from . import _decomposition as nd
+    cells = [int(c) for c in cells]
+    x = np.ascontiguousarray(np.asarray(points, dtype=float)[:, :len(cells)])
+    lo, hi = x.min(axis=0).tolist(), x.max(axis=0).tolist()
+    rows, cols, vals, n_hats = nd.q1_hats(x, cells, lo, hi, eps, support_eps)
+    interior, n_interior = nd.q1_interior(cells, lo, hi)
+    boundary = nd.q1_boundary_points(rows, cols, vals, interior, len(x), eps)
+    hats = sp.csc_matrix((vals, (rows, cols)), shape=(len(x), n_hats))
+    coarse = hats[:, np.flatnonzero(interior >= 0)]
+    keep = ~boundary[rows]                                   # boundary points leave every support
+    supports = sp.csc_matrix((vals[keep], (rows[keep], cols[keep])), shape=hats.shape)
+    subdomains = [supports.indices[supports.indptr[k]:supports.indptr[k + 1]] for k in range(n_hats)]
+    subdomains = [np.sort(nj) for nj in subdomains if len(nj)]
     return Decomposition(coarse.tocsr(), subdomains)

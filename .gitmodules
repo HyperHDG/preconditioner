@@ -4,3 +4,6 @@
 [submodule "sweepplot"]
 	path = sweepplot
 	url = https://github.com/HyperHDG/sweepplot.git
+[submodule "submodules/nanobind"]
+	path = submodules/nanobind
+	url = https://github.com/wjakob/nanobind.git
