@@ -8,13 +8,14 @@ from netprecond.gortz_hellman_malqvist_22 import gortz_hellman_malqvist_22 as GH
 from netprecond.jprecond import JPrecond
 
 from support import golden
-from netprecond.problems import grid_laplacian, q1_subdomains
+from netprecond.problems import network_laplacian, q1_subdomains
 from problems_cg import cg_history
 
 
-def test_jprecond_q1_matches_reference():
-    n, H = 33, [4, 4]
-    points, A, dirichlet = grid_laplacian(n)
+def test_jprecond_q1_matches_reference(grid33):
+    H = [4, 4]
+    points, A, dirichlet, _ = network_laplacian(grid33)
+    points = points[:, :2]
     b = np.random.default_rng(0).standard_normal(A.shape[0])
     b[dirichlet] = 0.0
 

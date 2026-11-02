@@ -1,5 +1,5 @@
-"""Test problems and their subdomain covers. Everything here is built in numpy; no network
-file is needed."""
+"""Networks as graph Laplacians, and the subdomain cover of the reference method. Networks
+come as .geo.h5 files from fiber_network's make_geo, grids included (make_geo --grid N)."""
 import numpy as np
 import scipy.sparse as sp
 
@@ -7,27 +7,8 @@ from .gortz_hellman_malqvist_22 import gortz_hellman_malqvist_22 as GHM22
 from .jprecond import Domains
 
 
-def grid_laplacian(n):
-    """n x n points on the unit square, 4-neighbour graph Laplacian with unit weights,
-    Dirichlet rows and columns on the whole boundary replaced by the identity (SPD): the
-    reference preconditioner assumes Dirichlet data on the box boundary, its subdomains
-    leave those nodes out. Returns points (n*n, 2), the matrix (csr) and the mask."""
-    xs = np.linspace(0.0, 1.0, n)
-    X, Y = np.meshgrid(xs, xs, indexing="xy")
-    points = np.c_[X.ravel(), Y.ravel()]
-    idx = np.arange(n * n).reshape(n, n)
-    e = np.r_[np.c_[idx[:, :-1].ravel(), idx[:, 1:].ravel()], np.c_[idx[:-1, :].ravel(), idx[1:, :].ravel()]]
-    W = sp.coo_matrix((np.ones(len(e)), (e[:, 0], e[:, 1])), shape=(n * n, n * n))
-    W = (W + W.T).tocsr()
-    L = sp.diags(np.asarray(W.sum(axis=1)).ravel()) - W
-    dirichlet = (points[:, 0] == 0.0) | (points[:, 0] == 1.0) | (points[:, 1] == 0.0) | (points[:, 1] == 1.0)
-    P = sp.diags((~dirichlet).astype(float))
-    A = P @ L @ P + sp.diags(dirichlet.astype(float))
-    return points, A.tocsr(), dirichlet
-
-
 def rhs_sin(A, dirichlet):
-    """The right-hand side examples/laplacian.cxx uses: sin(1 + i), zero on Dirichlet nodes."""
+    """The right-hand side every driver uses: sin(1 + i), zero on Dirichlet nodes."""
     b = np.sin(1.0 + np.arange(A.shape[0]))
     b[dirichlet] = 0.0
     return b

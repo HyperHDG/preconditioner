@@ -8,7 +8,7 @@ import scipy.sparse as sp
 from netprecond.gortz_hellman_malqvist_22 import gortz_hellman_malqvist_22 as GHM22
 from netprecond.jprecond import Domains, JPrecond
 
-from netprecond.problems import grid_laplacian
+from netprecond.problems import network_laplacian
 
 
 def jprecond_q1(points, H, A=None):
@@ -27,8 +27,9 @@ def same_sparse(a, b):
     return d.nnz == 0
 
 
-def test_q1_coarse_basis_on_grid():
-    points, A, _ = grid_laplacian(33)
+def test_q1_coarse_basis_on_grid(grid33):
+    points, A, _, _ = network_laplacian(grid33)
+    points = points[:, :2]
     ref, jp = GHM22(points, [4, 4]), jprecond_q1(points, [4, 4])
     assert ref.coarse_basis_int.shape == (33 * 33, 3 * 3)
     assert same_sparse(ref.coarse_basis_int, jp.coarse_basis_int)
