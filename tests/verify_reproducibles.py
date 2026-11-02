@@ -8,7 +8,9 @@ dense patch matrices, so Timoshenko runs on the 1141-node mikado network with 4 
 cells. Their printed CG residual histories are compared with the example's on the identical
 network. Run by hand (it compiles both HyperHDG interfaces, minutes):
 
-    python tests/verify_reproducibles.py
+    python tests/verify_reproducibles.py                 # diffusion
+    python tests/verify_reproducibles.py --timoshenko    # also the beams: the old script's
+                                                         # preconditioner takes many minutes
 """
 import os
 import pathlib
@@ -88,6 +90,10 @@ if not grid.exists():
 write_geo_2d(grid, DOMAINS / "grid33.geo", DOMAINS / "grid33_points.txt")
 script = old_script("fiber_network_diffusion.py", "grid33", [("for poly_degree in [1, 6]:", "for poly_degree in [1]:")])
 ok &= compare("diffusion, grid33, H=8, degree 1", run_old(script), run_new(grid, "diffusion", 1, 8))
+
+if "--timoshenko" not in sys.argv:
+    print("ALL MATCH" if ok else "MISMATCH")
+    sys.exit(0 if ok else 1)
 
 # Timoshenko beams: mikado 100 (1141 nodes), 4 x 4 coarse grid (the old script's 8 x 8 cannot
 # be used, the empty hats make the coarse problem singular), degree 5 as in the old script
