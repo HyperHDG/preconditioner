@@ -11,7 +11,9 @@ HyperHDG is the pinned submodule; its Python interface compiles the C++ below th
 needs Dirichlet nodes on its whole bounding box (make_geo --dirichlet xmin xmax ymin ymax).
 """
 import argparse
+import io
 import pathlib
+import re
 import sys
 import time
 
@@ -70,7 +72,7 @@ def emit(key, value):
 
 
 p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-p.add_argument("--domain", required=True, metavar="FILE", help=".geo.h5 network")
+p.add_argument("--domain", required=True, metavar="FILE", help=".geo.h5 (or legacy .geo) network")
 p.add_argument("--problem", choices=["diffusion", "timoshenko"], default="diffusion")
 p.add_argument("--degree", type=int, default=1, help="polynomial degree of the local solver")
 p.add_argument("--tau", type=float, default=1.0, help="HDG penalty parameter")
@@ -79,8 +81,18 @@ p.add_argument("--rtol", type=float, default=1e-10)
 p.add_argument("--label", default=None, help="free text copied into the output")
 args = p.parse_args()
 
-with h5py.File(args.domain, "r") as f:
-    points = f["domain/points"][:]
+def read_points(domain):
+    """The node coordinates: /domain/points of a .geo.h5, the POINTS block of a .geo."""
+    if domain.endswith((".h5", ".hdf5")):
+        with h5py.File(domain, "r") as f:
+            return f["domain/points"][:]
+    text = pathlib.Path(domain).read_text()
+    n = int(re.search(r"N_Points\s*=\s*(\d+)", text).group(1))
+    block = text.split("POINTS:")[1].split("\n", 1)[1]
+    return np.loadtxt(io.StringIO(block), max_rows=n)
+
+
+points = read_points(args.domain)
 dim = points.shape[1]
 module = hyperhdg.load(code(dim, args.degree), hyperhdg=HYPERHDG, cache_dir=ROOT / ".cache" / "hyperhdg")
 hdg = getattr(module, args.problem.capitalize())(args.domain, args.tau)
