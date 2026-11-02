@@ -49,3 +49,15 @@ def q1(points, cells, eps=1e-10, support_eps=1e-14):
     subdomains = [supports.indices[supports.indptr[k]:supports.indptr[k + 1]] for k in range(n_hats)]
     subdomains = [np.sort(nj) for nj in subdomains if len(nj)]
     return Decomposition(coarse.tocsr(), subdomains)
+
+
+def restrict(dec, keep):
+    """The decomposition on a subset of the dofs: subdomains lose the dofs where keep is
+    False and the coarse functions are zeroed there. For dofs a system does not carry, such
+    as Dirichlet dofs whose rows HyperHDG leaves empty: a subdomain block containing one of
+    them would be singular."""
+    keep = np.asarray(keep, dtype=bool)
+    B = sp.diags(keep.astype(float)) @ dec.coarse_basis
+    B.eliminate_zeros()
+    subdomains = [nj[keep[nj]] for nj in dec.subdomains]
+    return Decomposition(B.tocsr(), [nj for nj in subdomains if len(nj)])
