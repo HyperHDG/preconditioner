@@ -6,7 +6,7 @@
 # scipy-based examples; net3 (40 x 40 mm, 41M nodes, 6 GB) only with NET3=1. Units kg, um, s.
 #
 #   examples/zenodo_fiber_network.sh
-#   python examples/hyperhdg_q1.py --domain output/zenodo/net2-crop.geo.h5 --problem timoshenko -H 8
+#   python examples/hyperhdg_net_q1.py --domain output/zenodo/net2-crop.geo.h5 --problem timoshenko -H 8
 #   ./build/laplacian_net2as -domain output/zenodo/net2.geo.h5 -net2as_p 15 -net2as_cb_type q1 -net2as_cb_trim
 set -eo pipefail
 cd "$(dirname "$0")/.."

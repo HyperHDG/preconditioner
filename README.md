@@ -34,7 +34,7 @@ the tests in `tests/`.
 - `tools/`: `frontal_distribution` (cholmod frontal sizes), `partition_net.py` (METIS
   partition of a `.geo.h5`), `petsc_mat_to_vtkhdf.py` and `netcoarse.py` (PETSc matrix to
   VTKHDF, two versions to be unified).
-- `examples/`: `laplacian_net2as.cxx`, `laplacian_q1.py`, `hyperhdg_q1.py`, the sweeps,
+- `examples/`: `laplacian_net2as.cxx`, `laplacian_q1.py`, `hyperhdg_net_q1.py`, the sweeps,
   `zenodo_fiber_network.sh`; `hyperhdg/network.cxx` (HyperHDG assembles, net2as
   preconditions; built with `-DNETPRECOND_HYPERHDG=ON -DHYPERHDG_DIR=...`, untested here).
 
@@ -59,17 +59,18 @@ boundary; make_geo's default band of 2 % of the extent is several layers on a fi
 
 ## HDG systems from HyperHDG
 
-`examples/hyperhdg_q1.py` does the same for the HDG trace systems HyperHDG assembles on the
+`examples/hyperhdg_net_q1.py` does the same for the HDG trace systems HyperHDG assembles on the
 network: diffusion, and Timoshenko beams with six dofs per node. One module instantiates both
-classes, `Diffusion` and `Timoshenko`, on the file topology for a (space dimension, degree)
-pair; HyperHDG's Python interface compiles it on first use into `.cache/hyperhdg/`. The q1
+classes, `Diffusion` and `Timoshenko`, on the 3D file topology for a degree; HyperHDG's Python
+interface compiles it on first use into `.cache/hyperhdg/`. Networks are three-dimensional;
+`--flatten` solves on a copy with z = 0, the network projected to the plane. The q1
 decomposition is expanded to the dofs per node and restricted to the dofs the system carries:
 HyperHDG leaves the rows of Dirichlet dofs empty, and make_geo's Dirichlet band reaches inside
 the box, so those dofs must leave every subdomain or the blocks are singular.
 
 ```
-python examples/hyperhdg_q1.py --domain mikado.geo.h5 --problem diffusion -H 4
-python examples/hyperhdg_q1.py --domain mikado.geo.h5 --problem timoshenko --degree 2 -H 4
+python examples/hyperhdg_net_q1.py --domain mikado.geo.h5 --problem diffusion -H 4
+python examples/hyperhdg_net_q1.py --domain mikado.geo.h5 --problem timoshenko --degree 2 -H 4
 ```
 
 `examples/hyperhdg_cube_q1.py` is the same preconditioner on plain HDG diffusion on the unit

@@ -3,16 +3,21 @@
 on a network, the q1 decomposition expanded to the dofs per node, AdditiveSchwarz, PCG and the
 Lanczos estimate of the condition number. YAML on stdout as the values become available.
 
-    python examples/hyperhdg_q1.py --domain grid.geo.h5 --problem diffusion -H 4
-    python examples/hyperhdg_q1.py --domain grid.geo.h5 --problem timoshenko --degree 2 -H 4
+    python examples/hyperhdg_net_q1.py --domain grid.geo.h5 --problem diffusion -H 4
+    python examples/hyperhdg_net_q1.py --domain grid.geo.h5 --problem timoshenko --degree 2 -H 4
 
 HyperHDG is the pinned submodule; its Python interface compiles the C++ below the first time a
-(space dimension, degree) pair is asked for and caches it under .cache/hyperhdg/. The network
-needs Dirichlet nodes on its whole bounding box (make_geo --dirichlet xmin xmax ymin ymax).
+degree is asked for and caches it under .cache/hyperhdg/. Networks are three-dimensional;
+--flatten solves on a copy with z = 0, the network projected to the plane (what the old
+diffusion reproducible did with its 2D topology). The network needs Dirichlet nodes on its whole
+bounding box (make_geo --dirichlet xmin xmax ymin ymax).
 """
 import argparse
+import atexit
 import pathlib
+import shutil
 import sys
+import tempfile
 import time
 
 import h5py
@@ -39,34 +44,35 @@ MODULE = """\
 
 #include "reproducibles_python/parameters/diffusion.hxx"
 
-template <template <unsigned int, unsigned int, unsigned int, typename> typename LocalSolverT>
+template <typename LocalSolverT>
 using Problem = GlobalLoop::Elliptic<
-  Topology::File<1, {dim}>, Geometry::File<1, {dim}>, NodeDescriptor::File<1, {dim}>,
-  LocalSolverT<{dim}, {degree}, {quadrature}, double>, std::vector<double> >;
+  Topology::File<1, 3>, Geometry::File<1, 3>, NodeDescriptor::File<1, 3>, LocalSolverT, std::vector<double> >;
 
-template <unsigned int dim, unsigned int degree, unsigned int quadrature, typename float_t>
-using DiffusionSolver = LocalSolver::Diffusion<1, degree, quadrature, TestParametersSinEllipt, float_t>;
-template <unsigned int dim, unsigned int degree, unsigned int quadrature, typename float_t>
-using TimoshenkoSolver = LocalSolver::TimoshenkoBeam<1, dim, degree, quadrature,
-                                                     LocalSolver::TimoschenkoBeamParametersClamped, float_t>;
-
-using Diffusion = Problem<DiffusionSolver>;
-{timoshenko_alias}
+using Diffusion = Problem<LocalSolver::Diffusion<1, {degree}, {quadrature}, TestParametersSinEllipt, double> >;
+using Timoshenko = Problem<LocalSolver::TimoshenkoBeam<1, 3, {degree}, {quadrature},
+                                                       LocalSolver::TimoschenkoBeamParametersClamped, double> >;
 
 NB_MODULE({name}, m) {{
   HyperHDG::bind_python<Diffusion>(m, "Diffusion");
-{timoshenko_bind}
+  HyperHDG::bind_python<Timoshenko>(m, "Timoshenko");
 }}
 """
 
 
-def code(dim, degree):
-    """The module source for one (space dimension, degree) instantiation: Diffusion, and
-    Timoshenko beams in three dimensions (the beam solver is 3D only)."""
-    beams = dim == 3
-    return MODULE.format(dim=dim, degree=degree, quadrature=2 * degree, name=f"netprecond_hdg_D{dim}_P{degree}",
-                         timoshenko_alias="using Timoshenko = Problem<TimoshenkoSolver>;" if beams else "",
-                         timoshenko_bind='  HyperHDG::bind_python<Timoshenko>(m, "Timoshenko");' if beams else "")
+def code(degree):
+    """The module source for one degree: Diffusion and Timoshenko on the 3D file topology."""
+    return MODULE.format(degree=degree, quadrature=2 * degree, name=f"netprecond_hdg_net_P{degree}")
+
+
+def flattened(domain):
+    """A temporary copy of the network with z = 0, removed at exit."""
+    tmp = pathlib.Path(tempfile.mkdtemp(prefix="netprecond-flatten-"))
+    atexit.register(shutil.rmtree, tmp, ignore_errors=True)
+    copy = tmp / pathlib.Path(domain).name
+    shutil.copyfile(domain, copy)
+    with h5py.File(copy, "r+") as f:
+        f["domain/points"][:, 2] = 0.0
+    return str(copy)
 
 
 def emit(key, value):
@@ -74,24 +80,25 @@ def emit(key, value):
 
 
 p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-p.add_argument("--domain", required=True, metavar="FILE", help=".geo.h5 network")
+p.add_argument("--domain", required=True, metavar="FILE", help=".geo.h5 network, three coordinates per node")
 p.add_argument("--problem", choices=["diffusion", "timoshenko"], default="diffusion")
 p.add_argument("--degree", type=int, default=1, help="polynomial degree of the local solver")
 p.add_argument("--tau", type=float, default=1.0, help="HDG penalty parameter")
 p.add_argument("-H", type=int, default=4, help="coarse cells per axis over the xy bounding box")
 p.add_argument("--subdomains", choices=["node", "component"], default="node",
                help="node: patches keep all components of a node (default); component: one patch per component, the reference's repeat variant")
+p.add_argument("--flatten", action="store_true", help="solve on the network projected to the plane (z = 0)")
 p.add_argument("--rtol", type=float, default=1e-10)
 p.add_argument("--label", default=None, help="free text copied into the output")
 args = p.parse_args()
 
 with h5py.File(args.domain, "r") as f:
     points = f["domain/points"][:]
-dim = points.shape[1]
-module = hyperhdg.load(code(dim, args.degree), hyperhdg=HYPERHDG, cache_dir=ROOT / ".cache" / "hyperhdg")
-if args.problem == "timoshenko" and dim != 3:
-    p.error("Timoshenko beams need a 3D network")
-hdg = getattr(module, args.problem.capitalize())(args.domain, args.tau)
+if points.shape[1] != 3:
+    p.error(f"{args.domain} has {points.shape[1]} coordinates per node, networks need 3 (use --flatten for a planar problem)")
+domain = flattened(args.domain) if args.flatten else args.domain
+module = hyperhdg.load(code(args.degree), hyperhdg=HYPERHDG, cache_dir=ROOT / ".cache" / "hyperhdg")
+hdg = getattr(module, args.problem.capitalize())(domain, args.tau)
 
 t0 = time.time()
 size = hdg.size_of_system()
@@ -107,6 +114,7 @@ emit("problem", args.problem)
 emit("degree", args.degree)
 emit("H", args.H)
 emit("subdomains_per", args.subdomains)
+emit("flatten", str(args.flatten).lower())
 emit("nodes", len(points))
 emit("block_size", block_size)
 emit("dofs", size)

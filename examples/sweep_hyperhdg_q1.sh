@@ -29,9 +29,9 @@ for m in $MASSES; do
   [ -e $OUT/mikado-$m.geo.h5 ] || $MAKE_GEO --mikado $m --seed $SEED --dirichlet xmin xmax ymin ymax -o $OUT/mikado-$m.geo.h5 > $OUT/mikado-$m.log 2>&1
 done
 # compile the HyperHDG module once, before parallel asks for it from several jobs at once
-python examples/hyperhdg_q1.py --domain $OUT/grid-17.geo.h5 --problem diffusion --degree $DEGREE -H 4 > /dev/null
+python examples/hyperhdg_net_q1.py --domain $OUT/grid-17.geo.h5 --problem diffusion --degree $DEGREE -H 4 > /dev/null
 
-RUN="python examples/hyperhdg_q1.py --degree $DEGREE"
+RUN="python examples/hyperhdg_net_q1.py --degree $DEGREE"
 { for n in $NS; do for H in $HS; do echo "$RUN --domain $OUT/grid-$n.geo.h5 --problem diffusion -H $H --label grid-$n"; done; done
   for m in $MASSES; do for H in $HS; do for p in diffusion timoshenko; do echo "$RUN --domain $OUT/mikado-$m.geo.h5 --problem $p -H $H --label mikado-$m"; done; done; done
 } | parallel -j $JOBS --bar --results $OUT/runs.json || true     # parallel exits with the number of failed jobs

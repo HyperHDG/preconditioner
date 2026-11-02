@@ -1,12 +1,13 @@
 {
  "source": "HyperHDG reproducibles_python/fiber_network_diffusion.py at a5891e3f (h5-io), cython interface, run on pde22; patched only in the domain name and scipy's tol -> rtol",
- "network": "tests/data/fiber_network_14871_2d.geo.h5",
+ "network": "tests/data/fiber_network_14871.geo.h5",
  "settings": {
   "problem": "diffusion",
   "degree": 1,
   "H": 8,
   "tau": 1.0,
-  "rtol": 1e-10
+  "rtol": 1e-10,
+  "flatten": true
  },
  "iterations": 43,
  "residuals": [

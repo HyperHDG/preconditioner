@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Turn the stdout of HyperHDG's cython-era reproducibles into golden files.
 
-reproducibles_python/fiber_network_{diffusion,elastic}.py are the scripts examples/hyperhdg_q1.py
+reproducibles_python/fiber_network_{diffusion,elastic}.py are the scripts examples/hyperhdg_net_q1.py
 replaces; they leave HyperHDG (PR-C2), so their CG histories are kept here as
 tests/golden/reproducible_*.json with the provenance inside, and tests/test_hyperhdg.py compares
-the example against them on tests/data/fiber_network_14871.geo.h5, the same network. The scripts
+the example against them on tests/data/fiber_network_14871.geo.h5, the same network, flattened for diffusion. The scripts
 were run on pde22 from HyperHDG at the h5-io tip a5891e3f, unmodified except for the domain
 name (one of the three the script offers) and scipy's tol -> rtol rename; the diffusion script
 loops over degrees 1 and 6 on a 2D topology (the network projected to the plane), the elastic
@@ -19,9 +19,9 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 # the scripts read domains/fiber_network_14871.geo; the diffusion one instantiates a 2D topology
-# (File<1,2>, Point<2>) and so solves the network projected to the plane, which
-# fiber_network_14871_2d.geo.h5 is; the elastic one is 3D
-NETWORK = {"diffusion": "tests/data/fiber_network_14871_2d.geo.h5", "timoshenko": "tests/data/fiber_network_14871.geo.h5"}
+# (File<1,2>, Point<2>) and so solves the network projected to the plane, which the example's
+# --flatten reproduces (the 1D diffusion solver only sees edge lengths); the elastic one is 3D
+NETWORK = "tests/data/fiber_network_14871.geo.h5"
 SOURCE = ("HyperHDG reproducibles_python/{script} at a5891e3f (h5-io), cython interface, run on pde22; "
           "patched only in the domain name and scipy's tol -> rtol")
 
@@ -42,7 +42,7 @@ def histories(text):
 
 
 def write(name, script, settings, residuals):
-    doc = {"source": SOURCE.format(script=script), "network": NETWORK[settings["problem"]], "settings": settings,
+    doc = {"source": SOURCE.format(script=script), "network": NETWORK, "settings": settings,
            "iterations": len(residuals), "residuals": residuals}
     path = ROOT / "tests" / "golden" / f"{name}.json"
     path.write_text(json.dumps(doc, indent=1))
@@ -57,7 +57,7 @@ for log in sys.argv[1:]:
         assert len(runs) == len(degrees), (len(runs), degrees)
         for degree, res in zip(degrees, runs):
             write(f"reproducible_diffusion_14871_H8_P{degree}", "fiber_network_diffusion.py",
-                  {"problem": "diffusion", "degree": degree, "H": 8, "tau": 1.0, "rtol": 1e-10}, res)
+                  {"problem": "diffusion", "degree": degree, "H": 8, "tau": 1.0, "rtol": 1e-10, "flatten": True}, res)
     else:
         (res,) = histories(text)
         # the reference's repeat=6 makes one subdomain per hat AND component (486, not 81)

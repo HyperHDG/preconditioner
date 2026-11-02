@@ -6,7 +6,6 @@ columns. Kept here because that converter is gone and the file cannot be regener
 byte; the golden files `tests/golden/reproducible_*.json` name these files.
 
 - `fiber_network_14871.geo.h5`: the .geo through HyperHDG's `python/geo2h5.py`. The example gives
-  the identical CG history on both formats.
-- `fiber_network_14871_2d.geo.h5`: the same with the z coordinate dropped. The old diffusion
-  reproducible instantiated a 2D topology on the 3D file and so solved the network projected to the
-  plane, which this file reproduces exactly; the old elastic reproducible is 3D.
+  the identical CG history on both formats. The old diffusion reproducible instantiated a 2D
+  topology on the 3D file and so solved the network projected to the plane, which the example's
+  `--flatten` reproduces; the old elastic reproducible is 3D.
