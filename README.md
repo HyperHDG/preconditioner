@@ -99,7 +99,7 @@ it is run by hand.
 
 ## Sweeps: the condition number is bounded
 
-`examples/sweep_grid_q1.sh`, `examples/sweep_mikado_q1.sh` and `examples/sweep_hyperhdg_q1.sh` run the reference method (as
+`examples/sweep_grid_q1.sh`, `examples/sweep_mikado_q1.sh` and `examples/sweep_hyperhdg_net_q1.sh` run the reference method (as
 jprecond q1, which the tests show to be the same) with PCG on graph Laplacians and record the
 Lanczos estimate of the condition number of the preconditioned operator (`python/netprecond/pcg.py`,
 the estimate PETSc's `-ksp_compute_eigenvalues` gives for CG). The theory (Görtz, Hellman,
@@ -113,7 +113,7 @@ coarse cells per axis and grows to 17 with 16 cells, which is the network consta
 finer coarse cells see fewer fibers each. Networks too sparse for a coarse grid make the coarse
 problem singular (empty hats) and such runs are dropped from the plots.
 
-Through HyperHDG (`sweep_hyperhdg_q1.sh`, degree 1): diffusion on grids gives 3.2 to 3.7 and 14
+Through HyperHDG (`sweep_hyperhdg_net_q1.sh`, degree 1): diffusion on grids gives 3.2 to 3.7 and 14
 to 17 iterations, on mikado networks 7 to 10 with 4 cells per axis. Timoshenko beams, six dofs
 per node, give 20 at 124k dofs and 16 at 404k dofs with 4 cells, but 50 to 85 with 8 cells and
 hundreds on the smallest networks: plain hats replicated per component are a weak coarse space
