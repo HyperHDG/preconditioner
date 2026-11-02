@@ -1,5 +1,7 @@
 #include "net2as.hxx"
 #include "petsc_util.hxx"
+#include "decomposition/q1.hxx"
+#include <vector>
 #include <petsc/private/pcimpl.h>
 #include <petsc/private/hashmapi.h>
 #include <petsc/private/hashseti.h>
@@ -670,8 +672,8 @@ PetscErrorCode net2as_make_is_local(PC_Net2AS *data, MatCOO *sd) {
 }
 
 PetscErrorCode net2as_cb_q1(PC_Net2AS *data, MatCOO *coo, MatCOO *sd) {
-  PetscReal min[2], max[2], h[2];
-  PetscInt vstart, vend, ns[2];
+  PetscReal min[2], max[2];
+  PetscInt vstart, vend, cells[2];
   PetscReal *points;
   PetscInt n_coarse, n_local;
   PetscFunctionBegin;
@@ -679,32 +681,29 @@ PetscErrorCode net2as_cb_q1(PC_Net2AS *data, MatCOO *coo, MatCOO *sd) {
   for (PetscInt d = 0; d < 2; d++) {
     PetscCall(VecStrideMin(data->points, d, NULL, min+d));
     PetscCall(VecStrideMax(data->points, d, NULL, max+d));
-    h[d] = (max[d]-min[d]) / (data->p[d]+1);
-    ns[d] = data->p[d]+2; // coarse DoFs per dim
+    cells[d] = data->p[d]+1;
   }
-  n_coarse = ns[0] * ns[1];
-  data->H = PetscMax(h[0], h[1]);
+  // the hats, interior map and the hat evaluation itself live in netdecomp (PETSc-free)
+  netdecomp::Q1Grid grid(2, cells, min, max);
+  const PetscReal *h = grid.h.data();   // the enriched coarse spaces below use the cell size too
+  n_coarse = grid.n_hats();
+  data->H = PetscMax(grid.h[0], grid.h[1]);
   data->overlap_abs = data->H;
   data->overlap_frac = 1;
 
   // Optionally trim the coarse DoFs that peak on the domain boundary: the outer ring of the
-  // tensor-product Q1 grid (i in {0, ns[0]-1} or j in {0, ns[1]-1}). These basis functions peak on
-  // the Dirichlet boundary where the solution is fixed; dropping them makes the coarse space
-  // conform to the homogeneous boundary condition (gortz.pdf's V_0: for an aligned coarse grid the
-  // remaining interior hats vanish on the boundary). The trim applies to the COARSE SPACE only —
-  // the subdomain cover below keeps the boundary patches, matching the paper's decomposition
-  // (all partition-of-unity patches, coarse space in V).
-  // col_remap maps each old coarse column to its compacted index, or -1 if trimmed.
-  PetscInt *col_remap = NULL;
+  // tensor-product Q1 grid. These basis functions peak on the Dirichlet boundary where the
+  // solution is fixed; dropping them makes the coarse space conform to the homogeneous boundary
+  // condition (gortz.pdf's V_0: for an aligned coarse grid the remaining interior hats vanish on
+  // the boundary). The trim applies to the COARSE SPACE only, the subdomain cover below keeps
+  // the boundary patches, matching the paper's decomposition (all partition-of-unity patches,
+  // coarse space in V). col_remap maps each old coarse column to its compacted index, or -1.
+  std::vector<std::int64_t> col_remap;
   PetscInt n_coarse_kept = n_coarse;
   if (data->cb_trim) {
-    n_coarse_kept = 0;
-    PetscCall(PetscMalloc1(n_coarse, &col_remap));
-    for (PetscInt j = 0; j < ns[1]; j++)
-      for (PetscInt i = 0; i < ns[0]; i++) {
-        PetscBool bdry = (PetscBool)(i == 0 || i == ns[0]-1 || j == 0 || j == ns[1]-1);
-        col_remap[j*ns[0]+i] = bdry ? -1 : n_coarse_kept++;
-      }
+    std::int64_t kept;
+    col_remap = netdecomp::q1_interior(grid, &kept);
+    n_coarse_kept = kept;
   }
 
   PetscCall(VecGetOwnershipRange(data->points, &vstart, &vend));
@@ -715,39 +714,13 @@ PetscErrorCode net2as_cb_q1(PC_Net2AS *data, MatCOO *coo, MatCOO *sd) {
   data->n_coarse = n_coarse;
   data->cb_ncomp = 1; // q1 has no per-subdomain enrichment
 
-  // fill coarse basis functions
-  PetscCall(MatCOO_Alloc(coo, 4 * n_local));
-  for (PetscInt k = 0; k < n_local; k++) {
-    PetscReal x = points[3*k], y = points[3*k+1];
-    PetscInt i = (x - min[0]) / h[0];
-    PetscInt j = (y - min[1]) / h[1];
-    if (i > data->p[0]) i = data->p[0];
-    if (j > data->p[1]) j = data->p[1];
-    if (i < 0) i = 0;
-    if (j < 0) j = 0;
-    PetscReal xx = (x - (i*h[0] + min[0])) / h[0];
-    PetscReal yy = (y - (j*h[1] + min[1])) / h[1];
-
-    PetscInt row = vstart + k;
-    struct { PetscInt i, j; PetscReal w; } pts[4] = {
-      {i,   j,   (1-xx)*(1-yy)},
-      {i+1, j,       xx*(1-yy)},
-      {i,   j+1, (1-xx)*yy    },
-      {i+1, j+1,     xx*yy    },
-    };
-    for (unsigned int l = 0; l < 4; l++) {
-      PetscInt col = pts[l].j * ns[0] + pts[l].i;
-      // Skip exact-zero weights: they would put nodes lying exactly on a patch boundary into
-      // the far-side subdomains (closed instead of open hat supports). On coarse meshes aligned
-      // with a regular grid network that couples same-color patches and raises lambda_max of the
-      // preconditioned operator from 4 to 6-9; gortz.pdf's Table 2 grid rates are only
-      // reproduced with open supports.
-      if (pts[l].w == 0) continue;
-      PetscCall(MatCOO_Push(coo, row, col, pts[l].w));
-      // PetscCall(PetscPrintf(PETSC_COMM_WORLD, "%.2e, %.2e, %d, %d, | %d, %d, %.2e\n", x, y, i, j , row, col, pts[l].w));
-    }
-  }
-
+  // coarse basis functions at the owned points; zero weights are skipped: open hat supports
+  // (nodes exactly on a patch boundary would otherwise join the far-side subdomains, couple
+  // same-color patches and raise lambda_max of the preconditioned operator from 4 to 6-9)
+  netdecomp::Coo hats = netdecomp::q1_hats(grid, points, n_local, 3, vstart);
+  PetscCall(MatCOO_Alloc(coo, hats.nnz()));
+  for (std::int64_t t = 0; t < hats.nnz(); t++)
+    PetscCall(MatCOO_Push(coo, hats.rows[t], hats.cols[t], hats.vals[t]));
   PetscCall(VecRestoreArray(data->points, &points));
 
   // subdomains = supports of ALL hats (including the boundary-peaked ones), so the cover has no
@@ -771,8 +744,6 @@ PetscErrorCode net2as_cb_q1(PC_Net2AS *data, MatCOO *coo, MatCOO *sd) {
     coo->nnz = nnz;
     data->n_coarse = n_coarse_kept;
   }
-
-  PetscCall(PetscFree(col_remap));
 
   // Per-component higher-degree coarse space (-net2as_cb_degs): replace the node-level hat basis
   // (which MatCreateMAIJ would replicate identically across all bs components) by a dof-level

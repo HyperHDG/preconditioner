@@ -18,12 +18,21 @@ option(NETPRECOND_HYPERHDG "build examples/hyperhdg/network (needs HYPERHDG_DIR)
 
 add_compile_options(-Wall -Wextra -Wno-unused-parameter -Wno-format-security -Wno-format-truncation)
 
+# the decompositions on arrays: PETSc-free, used by net2as and (later) bound to Python
+add_library(netdecomp src/decomposition/q1.cxx)
+target_include_directories(netdecomp PUBLIC src)
+enable_testing()
+add_executable(test_q1_hats tests/cxx/q1_hats.cxx)
+target_link_libraries(test_q1_hats netdecomp)
+target_include_directories(test_q1_hats PRIVATE src/decomposition)
+add_test(NAME q1_hats COMMAND test_q1_hats)
+
 add_library(petsc_util src/petsc_util.cxx)
 target_link_libraries(petsc_util PUBLIC PkgConfig::PETSC MPI::MPI_CXX)
 target_include_directories(petsc_util PUBLIC src)
 
 add_library(net2as src/net2as.cxx)
-target_link_libraries(net2as PRIVATE petsc_util $<$<BOOL:${HDF5_FOUND}>:HDF5::HDF5> PUBLIC PkgConfig::PETSC)
+target_link_libraries(net2as PRIVATE petsc_util netdecomp $<$<BOOL:${HDF5_FOUND}>:HDF5::HDF5> PUBLIC PkgConfig::PETSC)
 target_include_directories(net2as PUBLIC src)
 
 if(NETPRECOND_PARHIP)
