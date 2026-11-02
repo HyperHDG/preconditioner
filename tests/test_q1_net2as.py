@@ -11,7 +11,7 @@ import subprocess
 import numpy as np
 import pytest
 
-from conftest import ROOT, golden
+from support import ROOT, golden
 
 LAPLACIAN = ROOT / "build" / "laplacian"
 pytestmark = pytest.mark.skipif(not LAPLACIAN.exists(), reason="build/laplacian not built (cmake -B build && cmake --build build)")

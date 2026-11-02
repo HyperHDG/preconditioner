@@ -7,7 +7,7 @@ import scipy.sparse.linalg as spla
 from netprecond.gortz_hellman_malqvist_22 import gortz_hellman_malqvist_22 as GHM22
 from netprecond.jprecond import JPrecond
 
-from conftest import golden
+from support import golden
 from netprecond.problems import grid_laplacian, q1_subdomains
 from problems_cg import cg_history
 

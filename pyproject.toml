@@ -16,3 +16,6 @@ test = ["pytest"]
 [tool.setuptools]
 package-dir = { "" = "python" }
 packages = ["netprecond"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]        # not the submodules' tests
