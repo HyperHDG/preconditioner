@@ -1,56 +1,46 @@
-"""jprecond's q1 coarse space is the reference's: same interior hat functions, hence the
-same coarse operator, on a grid and on scattered points (where the bilinear hats are
-evaluated at arbitrary positions and the empty-support bookkeeping matters)."""
+"""jprecond's q1 coarse space is the reference's: the coarse_basis_int both store is the
+same matrix, on a grid and on scattered 2D and 3D points (where the bilinear hats are
+evaluated at arbitrary positions and the empty-support bookkeeping matters), and so is the
+coarse operator built from it."""
 import numpy as np
 import scipy.sparse as sp
 
-from netprecond import gortz_hellman_malqvist_22 as ref
-from netprecond import jprecond as jp
+from netprecond.gortz_hellman_malqvist_22 import gortz_hellman_malqvist_22 as GHM22
+from netprecond.jprecond import Domains, JPrecond
 
 from problems import grid_laplacian
 
 
-def coarse_bases(points, H):
-    r = ref.gortz_hellman_malqvist_22(points, H)
-    if len(H) == 2:
-        full = jp._coarse_basis_2d(points, H)
-        int_nodes = np.concatenate([j * (H[0] + 1) + np.arange(1, H[0]) for j in range(1, H[1])])
-    else:
-        full = jp._coarse_basis_3d(points, H)
-        int_nodes = np.concatenate([(k * (H[1] + 1) + j) * (H[0] + 1) + np.arange(1, H[0])
-                                    for j in range(1, H[1]) for k in range(1, H[2])])
-    return r.coarse_basis_int, sp.csr_matrix(full[:, int_nodes])
+def jprecond_q1(points, H, A=None):
+    """A JPrecond in q1 mode; the constructor factorizes the coarse operator and the
+    subdomain blocks, so it gets the identity and one dummy subdomain when only the coarse
+    space is under test."""
+    A = sp.identity(len(points), format="csr") if A is None else A
+    return JPrecond(A, points, H, domains=Domains(np.array([0, 1]), np.array([0])), coarse_space="q1")
 
 
 def same_sparse(a, b):
+    if a.shape != b.shape:
+        return False
     d = (a - b).tocsr()
     d.eliminate_zeros()
-    return d.nnz == 0 and a.shape == b.shape
+    return d.nnz == 0
 
 
 def test_q1_coarse_basis_on_grid():
     points, A, _ = grid_laplacian(33)
-    b_ref, b_jp = coarse_bases(points, [4, 4])
-    assert b_ref.shape == (33 * 33, 3 * 3)
-    assert same_sparse(b_ref, b_jp)
-    assert same_sparse(b_ref.T @ A @ b_ref, b_jp.T @ A @ b_jp)
+    ref, jp = GHM22(points, [4, 4]), jprecond_q1(points, [4, 4], A)
+    assert ref.coarse_basis_int.shape == (33 * 33, 3 * 3)
+    assert same_sparse(ref.coarse_basis_int, jp.coarse_basis_int)
+    B = ref.coarse_basis_int
+    assert same_sparse(B.T @ A @ B, jp.coarse_basis_int.T @ A @ jp.coarse_basis_int)
 
 
 def test_q1_coarse_basis_on_scattered_points_2d_and_3d():
     rng = np.random.default_rng(1)
     for H in ([5, 3], [3, 4, 2]):
         points = rng.random((2000, len(H)))
-        b_ref, b_jp = coarse_bases(points, H)
-        assert same_sparse(b_ref, b_jp)
-        # interior hats sum to 1 where no boundary hat is active: partition of unity inside
-        s = np.asarray(b_ref.sum(axis=1)).ravel()
+        ref, jp = GHM22(points, H), jprecond_q1(points, H)
+        assert same_sparse(ref.coarse_basis_int, jp.coarse_basis_int)
+        s = np.asarray(ref.coarse_basis_int.sum(axis=1)).ravel()   # interior hats: 0 <= sum <= 1
         assert s.max() <= 1 + 1e-12 and s.min() >= 0
-
-
-def test_jprecond_q1_uses_that_basis():
-    """The matrix JPrecond stores is the interior basis (kron with repeat=1 is the identity)."""
-    points, A, _ = grid_laplacian(17)
-    r = ref.gortz_hellman_malqvist_22(points, [4, 4])
-    doms = jp.Domains(np.array([0, 1]), np.array([0]))   # one dummy subdomain, not under test
-    p = jp.JPrecond(A, points, [4, 4], domains=doms, coarse_space="q1")
-    assert same_sparse(p.coarse_basis_int, r.coarse_basis_int)
