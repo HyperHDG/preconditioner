@@ -2,10 +2,39 @@ cmake_minimum_required(VERSION 3.20)
 project(netprecond CXX)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+add_compile_options(-Wall -Wextra -Wno-unused-parameter -Wno-format-security -Wno-format-truncation)
+enable_testing()
 
+option(NETPRECOND_PYTHON "build the Python binding netprecond._decomposition (nanobind submodule, Python headers)" ON)
 option(NETPRECOND_PETSC "build net2as, petsc_util and the PETSc examples" ON)
+option(NETPRECOND_PARHIP "build the ParHIP partitioner backend of net2as" OFF)
+option(NETPRECOND_CHOLMOD "build tools/frontal_distribution (needs cholmod from PETSc's SuiteSparse)" ON)
+option(NETPRECOND_HYPERHDG "build examples/hyperhdg/network (needs HYPERHDG_DIR)" OFF)
 
-if(NETPRECOND_PETSC)
+# ---- the decompositions on arrays: PETSc-free, used by net2as and bound to Python ----------
+add_library(netdecomp src/decomposition/q1.cxx)
+target_include_directories(netdecomp PUBLIC src)
+
+add_executable(test_q1_hats tests/cxx/q1_hats.cxx)
+target_link_libraries(test_q1_hats netdecomp)
+target_include_directories(test_q1_hats PRIVATE src/decomposition)
+add_test(NAME q1_hats COMMAND test_q1_hats)
+
+if(NETPRECOND_PYTHON)
+  # built into the package directory, where the editable install finds it
+  find_package(Python 3.10 COMPONENTS Interpreter Development.Module REQUIRED)
+  add_subdirectory(submodules/nanobind EXCLUDE_FROM_ALL)
+  nanobind_add_module(_decomposition NB_STATIC src/decomposition/python.cxx)
+  target_link_libraries(_decomposition PRIVATE netdecomp)
+  target_include_directories(_decomposition PRIVATE src/decomposition)
+  set_target_properties(_decomposition PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/python/netprecond)
+endif()
+
+if(NOT NETPRECOND_PETSC)
+  return()
+endif()
+
+# ---- PETSc: net2as, its tools and examples ------------------------------------------------
 # PETSc through pkg-config: set PKG_CONFIG_PATH to <petsc prefix>/lib/pkgconfig, or PETSC_DIR/PETSC_ARCH
 if(DEFINED ENV{PETSC_DIR})
   set(ENV{PKG_CONFIG_PATH} "$ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
@@ -14,32 +43,6 @@ find_package(PkgConfig REQUIRED)
 pkg_search_module(PETSC REQUIRED IMPORTED_TARGET PETSc)
 find_package(MPI REQUIRED CXX)     # PETSc.pc does not list -lmpi for executables
 find_package(HDF5)
-
-option(NETPRECOND_PARHIP "build the ParHIP partitioner backend of net2as" OFF)
-option(NETPRECOND_CHOLMOD "build tools/frontal_distribution (needs cholmod from PETSc's SuiteSparse)" ON)
-option(NETPRECOND_HYPERHDG "build examples/hyperhdg/network (needs HYPERHDG_DIR)" OFF)
-
-add_compile_options(-Wall -Wextra -Wno-unused-parameter -Wno-format-security -Wno-format-truncation)
-
-# the decompositions on arrays: PETSc-free, used by net2as and (later) bound to Python
-add_library(netdecomp src/decomposition/q1.cxx)
-target_include_directories(netdecomp PUBLIC src)
-enable_testing()
-add_executable(test_q1_hats tests/cxx/q1_hats.cxx)
-target_link_libraries(test_q1_hats netdecomp)
-target_include_directories(test_q1_hats PRIVATE src/decomposition)
-add_test(NAME q1_hats COMMAND test_q1_hats)
-
-# the Python binding of netdecomp: netprecond._decomposition, built into the package directory
-option(NETPRECOND_PYTHON "build the Python binding (nanobind submodule, Python headers)" ON)
-if(NETPRECOND_PYTHON)
-  find_package(Python 3.10 COMPONENTS Interpreter Development.Module REQUIRED)
-  add_subdirectory(submodules/nanobind EXCLUDE_FROM_ALL)
-  nanobind_add_module(_decomposition NB_STATIC src/decomposition/python.cxx)
-  target_link_libraries(_decomposition PRIVATE netdecomp)
-  target_include_directories(_decomposition PRIVATE src/decomposition)
-  set_target_properties(_decomposition PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/python/netprecond)
-endif()
 
 add_library(petsc_util src/petsc_util.cxx)
 target_link_libraries(petsc_util PUBLIC PkgConfig::PETSC MPI::MPI_CXX)
@@ -87,4 +90,3 @@ if(HDF5_FOUND)
 else()
   message(STATUS "HDF5 not found: skipping examples/laplacian")
 endif()
-endif()  # NETPRECOND_PETSC
