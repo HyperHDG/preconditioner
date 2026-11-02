@@ -1,8 +1,8 @@
 [submodule "fiber_network"]
-	path = fiber_network
+	path = submodules/fiber_network
 	url = https://github.com/HyperHDG/fiber_network.git
 [submodule "sweepplot"]
-	path = sweepplot
+	path = submodules/sweepplot
 	url = https://github.com/HyperHDG/sweepplot.git
 [submodule "submodules/nanobind"]
 	path = submodules/nanobind

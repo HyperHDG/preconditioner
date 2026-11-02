@@ -6,8 +6,8 @@
 # (git submodule update --init), GNU parallel, yq (github.com/mikefarah/yq), jq.
 set -eo pipefail
 cd "$(dirname "$0")/.."
-: ${SWEEPPLOT:=python sweepplot/sweepplot.py}                       # pinned submodules; or installed tools
-: ${MAKE_GEO:=python fiber_network/fiber_network/make_geo.py}
+: ${SWEEPPLOT:=python submodules/sweepplot/sweepplot.py}                       # pinned submodules; or installed tools
+: ${MAKE_GEO:=python submodules/fiber_network/fiber_network/make_geo.py}
 : ${OUTDIR:=output}
 : ${NS:=17 33 65 129 257}        # points per axis
 : ${HS:=4 8 16 32}               # coarse cells per axis (a cell needs nodes inside: H < N - 1; other pairs fail and are skipped)

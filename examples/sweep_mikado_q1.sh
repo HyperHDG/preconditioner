@@ -5,8 +5,8 @@
 # version, which the submodule fixes. Needs the package installed, GNU parallel, yq, jq.
 set -eo pipefail
 cd "$(dirname "$0")/.."
-: ${SWEEPPLOT:=python sweepplot/sweepplot.py}                       # pinned submodules; or installed tools
-: ${MAKE_GEO:=python fiber_network/fiber_network/make_geo.py}
+: ${SWEEPPLOT:=python submodules/sweepplot/sweepplot.py}                       # pinned submodules; or installed tools
+: ${MAKE_GEO:=python submodules/fiber_network/fiber_network/make_geo.py}
 : ${OUTDIR:=output}
 : ${MASSES:=50 100 200 400 800}     # total fiber length on the unit square, fiber length 0.05
 : ${HS:=4 8 16}                     # coarse cells per axis; too fine for a sparse net -> singular coarse problem, skipped

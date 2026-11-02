@@ -46,7 +46,7 @@ fiber_network's `make_geo`, builds its graph Laplacian with Dirichlet data on th
 and solves it with CG and net2as. A grid is a network like any other:
 
 ```
-python fiber_network/fiber_network/make_geo.py --grid 33 --dirichlet xmin xmax ymin ymax -o grid.geo.h5
+python submodules/fiber_network/fiber_network/make_geo.py --grid 33 --dirichlet xmin xmax ymin ymax -o grid.geo.h5
 ./build/laplacian -domain grid.geo.h5 -net2as_cb_type q1 -net2as_p 3 -net2as_cb_trim
 python examples/q1.py --domain grid.geo.h5 -H 4         # the same in Python, generation 2
 ```

@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-MAKE_GEO = ROOT / "fiber_network" / "fiber_network" / "make_geo.py"   # pinned submodule
+MAKE_GEO = ROOT / "submodules" / "fiber_network" / "fiber_network" / "make_geo.py"   # pinned submodule
 GOLDEN = ROOT / "tests" / "golden"
 
 
