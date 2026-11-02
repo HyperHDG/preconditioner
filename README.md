@@ -3,25 +3,32 @@
 Two-level additive Schwarz preconditioners for spatial network models (fiber networks,
 graph Laplacians, Timoshenko beam networks on graphs), in three generations:
 
-1. `python/netprecond/gortz_hellman_malqvist_22.py`: the reference implementation of
-   Görtz, Hellman, Målqvist, *Iterative solution of spatial network models by subspace
+1. `python/netprecond/reference/gortz_hellman_malqvist_22.py`: the reference implementation
+   of Görtz, Hellman, Målqvist, *Iterative solution of spatial network models by subspace
    decomposition*, Math. Comp. 93 (2024), by Andreas Rupp. Q1 coarse space on a Cartesian
-   grid, the grid cells as subdomains, scipy only.
-2. `python/netprecond/jprecond.py`: the same method rewritten and optimized, then extended by
-   partition-of-unity coarse spaces on arbitrary subdomain partitions.
+   grid, the hat supports as subdomains, scipy only. Frozen: it is the oracle of the tests.
+2. `python/netprecond/`: the Python tier. A `Decomposition` is data, the coarse basis and the
+   subdomains; `q1()` builds the reference's; `AdditiveSchwarz(A, dec)` is the two-level
+   preconditioner on any decomposition, factorized once, callable, scipy only. New
+   decompositions are prototyped here as functions returning that data. (This grew out of
+   jprecond.py, the 2025 rewrite of the reference that net2as was then written from; see the
+   git history.)
 3. `src/net2as.cxx`: the PETSc preconditioner `PCNet2AS` (`-pc_type net2as`, options
    `-net2as_*`): parallel, `cb_type q1` for the original numerics, `cb_type pu` for the new
    coarse spaces with graph-distance overlap and ParHIP/METIS partitions.
 
-This is the first import: the files as they were in HyperHDG's `jprecond/ne9` branch and in
-`fiber_network`, with their history. Slimming comes in later pull requests, each guarded by
-the tests in `tests/`.
+Where this is going: the decompositions become one PETSc-free C++ library that net2as uses
+and that is bound to Python, so production and prototypes meet in the same `AdditiveSchwarz`.
+The C++ side is still the import from HyperHDG's `jprecond/ne9` branch; its slimming comes in
+pull requests guarded by the tests in `tests/`.
 
 ## Layout
 
 - `src/`: `net2as`, `petsc_util`, the optional `petsc_parhip` backend. CMake targets.
-- `python/netprecond/`: the Python preconditioners, `gortz_constants.py` (the network
-  constants of the Görtz, Hellman, Målqvist assumptions), `sdsize.py` (subdomain size plots).
+- `python/netprecond/`: `decomposition.py` (the contract, `expand` for block dofs, `q1`),
+  `schwarz.py` (`AdditiveSchwarz`), `pcg.py` (PCG with the Lanczos condition estimate),
+  `problems.py` (graph Laplacians of `.geo.h5` networks), `reference/` (frozen),
+  `gortz_constants.py` (the network constants of the paper's assumptions), `sdsize.py`.
 - `tools/`: `frontal_distribution` (cholmod frontal sizes), `partition_net.py` (METIS
   partition of a `.geo.h5`), `petsc_mat_to_vtkhdf.py` and `netcoarse.py` (PETSc matrix to
   VTKHDF, two versions to be unified).
@@ -80,8 +87,9 @@ python -m pytest
 
 The examples and tests import the installed package; nothing is path-hacked.
 
-The tests pin the numerics: generation 1 against 2 (same coarse space, same CG history on
-a grid Laplacian) and 1 against 3 through `build/laplacian`, with the recorded histories in
-`tests/golden/`. Later pull requests slim the code against these.
+The tests pin the numerics to the frozen reference: the q1 decomposition has its coarse
+basis and its subdomains, `AdditiveSchwarz` on it has its CG history on a grid Laplacian, and
+net2as in q1 mode has it through `build/laplacian`; the recorded histories are in
+`tests/golden/`. A number may only change together with its golden file.
 
 `spack.yaml` describes an environment with PETSc (hdf5, metis, mumps).

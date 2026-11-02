@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""The reference method on the graph Laplacian of a network: jprecond in q1 mode (the tests
-show it is the reference), PCG, and the Lanczos estimate of the condition number of the
-preconditioned operator. Output is YAML on stdout, written as the values become available:
+"""The reference method on the graph Laplacian of a network: the q1 decomposition in the
+additive Schwarz preconditioner (the tests show it is the reference), PCG, and the Lanczos
+estimate of the condition number of the preconditioned operator. Output is YAML on stdout, written as the values become available:
 
     python examples/q1.py --domain grid.geo.h5 -H 8
 
@@ -11,13 +11,10 @@ method's coarse hats vanish there and its subdomains leave those nodes out. The 
 examples/sweep_*.sh run this under GNU parallel and plot with sweepplot.
 """
 import argparse
-import contextlib
-import sys
 import time
 
-from netprecond.jprecond import JPrecond
-from netprecond.pcg import pcg
-from netprecond.problems import network_laplacian, q1_subdomains, rhs_sin
+from netprecond import AdditiveSchwarz, pcg, q1
+from netprecond.problems import network_laplacian, rhs_sin
 
 
 def emit(key, value):
@@ -42,17 +39,16 @@ emit("nodes", A.shape[0])
 emit("dirichlet", int(dirichlet.sum()))
 
 t0 = time.time()
-doms = q1_subdomains(points[:, :2], [args.H, args.H])
-with contextlib.redirect_stdout(sys.stderr):      # jprecond reports its sizes on stdout
-    M = JPrecond(A, points[:, :2], [args.H, args.H], domains=doms, coarse_space="q1")
-emit("subdomains", len(doms))
-emit("subdomain_nodes_max", max(len(d) for d in doms))
-emit("coarse_dofs", M.coarse_basis_int.shape[1])
+dec = q1(points, (args.H, args.H))
+M = AdditiveSchwarz(A, dec)
+emit("subdomains", len(dec.subdomains))
+emit("subdomain_nodes_max", max(len(d) for d in dec.subdomains))
+emit("coarse_dofs", dec.coarse_basis.shape[1])
 emit("t_setup", round(time.time() - t0, 4))
 
 print("residuals:", flush=True)
 t0 = time.time()
-x, info = pcg(A, rhs_sin(A, dirichlet), M.matmul, rtol=args.rtol,
+x, info = pcg(A, rhs_sin(A, dirichlet), M, rtol=args.rtol,
               callback=lambda k, r: print(f"  - {r:.6e}", flush=True))
 emit("t_solve", round(time.time() - t0, 4))
 emit("iterations", info["iterations"])

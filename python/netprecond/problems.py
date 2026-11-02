@@ -1,10 +1,7 @@
-"""Networks as graph Laplacians, and the subdomain cover of the reference method. Networks
-come as .geo.h5 files from fiber_network's make_geo, grids included (make_geo --grid N)."""
+"""Networks as graph Laplacians. Networks come as .geo.h5 files from fiber_network's
+make_geo, grids included (make_geo --grid N)."""
 import numpy as np
 import scipy.sparse as sp
-
-from .gortz_hellman_malqvist_22 import gortz_hellman_malqvist_22 as GHM22
-from .jprecond import Domains
 
 
 def rhs_sin(A, dirichlet):
@@ -12,20 +9,6 @@ def rhs_sin(A, dirichlet):
     b = np.sin(1.0 + np.arange(A.shape[0]))
     b[dirichlet] = 0.0
     return b
-
-
-def q1_subdomains(points, H, eps=1e-14):
-    """The subdomain cover of the reference method: per coarse hat function of the H[0] x H[1]
-    coarse grid, the nodes where it is positive, boundary nodes removed. Returned as the
-    Domains object jprecond takes, so jprecond q1 and the reference are the same method."""
-    cb = GHM22(points, H).coarse_basis.tocsc()
-    doms = []
-    for k in range(cb.shape[1]):
-        nj = np.flatnonzero(cb.getcol(k).toarray().ravel() > eps)
-        if len(nj):
-            doms.append(nj)
-    offsets = np.r_[0, np.cumsum([len(d) for d in doms])]
-    return Domains(offsets, np.concatenate(doms))
 
 
 def network_laplacian(path, weights="unit"):
