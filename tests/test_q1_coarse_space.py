@@ -8,7 +8,7 @@ import scipy.sparse as sp
 from netprecond.gortz_hellman_malqvist_22 import gortz_hellman_malqvist_22 as GHM22
 from netprecond.jprecond import Domains, JPrecond
 
-from problems import grid_laplacian
+from netprecond.problems import grid_laplacian
 
 
 def jprecond_q1(points, H, A=None):

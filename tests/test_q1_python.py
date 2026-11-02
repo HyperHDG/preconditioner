@@ -5,23 +5,11 @@ import numpy as np
 import scipy.sparse.linalg as spla
 
 from netprecond.gortz_hellman_malqvist_22 import gortz_hellman_malqvist_22 as GHM22
-from netprecond.jprecond import JPrecond, Domains
+from netprecond.jprecond import JPrecond
 
 from conftest import golden
-from problems import cg_history, grid_laplacian
-
-
-def domains_from_supports(coarse_basis, eps=1e-14):
-    """What GHM22.precond loops over: per coarse column, the nodes where it is positive."""
-    cb = coarse_basis.tocsc()
-    doms = []
-    for k in range(cb.shape[1]):
-        col = cb.getcol(k).toarray().ravel()
-        nj = np.flatnonzero(col > eps)
-        if len(nj):
-            doms.append(nj)
-    offsets = np.r_[0, np.cumsum([len(d) for d in doms])]
-    return Domains(offsets, np.concatenate(doms))
+from netprecond.problems import grid_laplacian, q1_subdomains
+from problems_cg import cg_history
 
 
 def test_jprecond_q1_matches_reference():
@@ -32,7 +20,7 @@ def test_jprecond_q1_matches_reference():
 
     ref = GHM22(points, H)
     M_ref = spla.LinearOperator(A.shape, matvec=lambda r: ref.precond(A, r))
-    jp = JPrecond(A, points, H, domains=domains_from_supports(ref.coarse_basis), coarse_space="q1")
+    jp = JPrecond(A, points, H, domains=q1_subdomains(points, H), coarse_space="q1")
     M_jp = spla.LinearOperator(A.shape, matvec=jp.matmul)
 
     h_ref = cg_history(A, b, M_ref)
