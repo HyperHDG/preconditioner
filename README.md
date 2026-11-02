@@ -58,19 +58,21 @@ between 3.0 and 3.9 and PCG needs 13 to 16 iterations. On mikado networks genera
 fiber_network's `make_geo --mikado` with a fixed seed, it is 9 to 11 for 20k to 236k nodes with 4
 coarse cells per axis and grows to 17 with 16 cells, which is the network constants at work:
 finer coarse cells see fewer fibers each. Networks too sparse for a coarse grid make the coarse
-problem singular (empty hats) and such runs are dropped from the plots. One run of either
-sweep is `examples/grid_q1.py -n N -H H` or `examples/network_q1.py -domain x.geo.h5 -H H`,
-both print one JSON record; the sweeps need GNU parallel, jq and sweepplot, and
-`make_geo` from fiber_network on the PATH for the mikado one.
+problem singular (empty hats) and such runs are dropped from the plots. One run of either sweep is
+`examples/q1.py --grid N -H H` or `examples/q1.py --domain x.geo.h5 -H H`; it prints YAML as
+it goes, one residual per PCG iteration. The sweeps need GNU parallel, yq, jq and sweepplot,
+and `make_geo` from fiber_network on the PATH for the mikado one.
 
 ## Build
 
 ```
+pip install -e .                                           # in a venv on an externally managed Python
 export PKG_CONFIG_PATH=<petsc prefix>/lib/pkgconfig      # or PETSC_DIR / PETSC_ARCH
 cmake -B build && cmake --build build
-pip install -r requirements.txt && pip install -e .
 python -m pytest
 ```
+
+The examples and tests import the installed package; nothing is path-hacked.
 
 The tests pin the numerics: generation 1 against 2 (same coarse space, same CG history on
 a grid Laplacian) and 1 against 3 through `build/laplacian`, with the recorded histories in

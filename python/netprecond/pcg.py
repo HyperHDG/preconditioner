@@ -6,9 +6,10 @@ import numpy as np
 from scipy.linalg import eigvalsh_tridiagonal
 
 
-def pcg(A, b, M, rtol=1e-10, maxiter=1000, x0=None):
+def pcg(A, b, M, rtol=1e-10, maxiter=1000, x0=None, callback=None):
     """Solve A x = b with preconditioner M (a callable r -> M^-1 r). Returns x and a dict
-    with the relative residual history, the Lanczos eigenvalue bounds and their ratio."""
+    with the relative residual history, the Lanczos eigenvalue bounds and their ratio.
+    callback(k, relative residual) is called after every iteration."""
     x = np.zeros_like(b) if x0 is None else x0.copy()
     r = b - A @ x
     nb = np.linalg.norm(b)
@@ -23,6 +24,8 @@ def pcg(A, b, M, rtol=1e-10, maxiter=1000, x0=None):
         r -= alpha * Ap
         hist.append(float(np.linalg.norm(r) / nb))
         alphas.append(alpha)
+        if callback:
+            callback(len(hist), hist[-1])
         if hist[-1] < rtol:
             break
         z = M(r)
