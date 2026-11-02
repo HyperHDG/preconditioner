@@ -20,12 +20,19 @@ class Decomposition:
         return self.coarse_basis.shape[0]
 
 
-def expand(dec, block_size):
-    """The same decomposition on block_size dofs per node, dof = node * block_size + component."""
+def expand(dec, block_size, coupled=True):
+    """The same decomposition on block_size dofs per node, dof = node * block_size + component.
+    coupled: every subdomain keeps all components of its nodes (the paper's and net2as's node
+    patches). coupled=False splits each subdomain into one per component, the local solves then
+    ignore the coupling between components: what the reference implementation does for
+    repeat > 1, where the subdomains are the columns of the kron'ed coarse basis."""
     if block_size == 1:
         return dec
     B = sp.kron(dec.coarse_basis, sp.identity(block_size), format="csr")
-    subdomains = [(nj[:, None] * block_size + np.arange(block_size)).ravel() for nj in dec.subdomains]
+    if coupled:
+        subdomains = [(nj[:, None] * block_size + np.arange(block_size)).ravel() for nj in dec.subdomains]
+    else:
+        subdomains = [nj * block_size + c for nj in dec.subdomains for c in range(block_size)]
     return Decomposition(B, subdomains)
 
 

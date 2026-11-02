@@ -16,9 +16,9 @@ pytestmark = pytest.mark.skipif(os.environ.get("NETPRECOND_HYPERHDG") != "1",
                                 reason="set NETPRECOND_HYPERHDG=1 (compiles HyperHDG modules)")
 
 
-def run_example(network, problem, degree, H):
+def run_example(network, problem, degree, H, subdomains="node"):
     out = subprocess.run([sys.executable, str(ROOT / "examples" / "hyperhdg_q1.py"), "--domain", str(ROOT / network),
-                          "--problem", problem, "--degree", str(degree), "-H", str(H)],
+                          "--problem", problem, "--degree", str(degree), "-H", str(H), "--subdomains", subdomains],
                          capture_output=True, text=True, check=True).stdout
     return [float(m.group(1)) for m in re.finditer(r"^  - (\S+)$", out, re.M)]
 
@@ -28,6 +28,6 @@ def run_example(network, problem, degree, H):
 def test_against_reproducible(name):
     g = golden(name)
     s = g["settings"]
-    h = run_example(g["network"], s["problem"], s["degree"], s["H"])
+    h = run_example(g["network"], s["problem"], s["degree"], s["H"], s.get("subdomains", "node"))
     assert len(h) == g["iterations"], (len(h), g["iterations"])
     np.testing.assert_allclose(h, g["residuals"], rtol=1e-3, atol=1e-12)

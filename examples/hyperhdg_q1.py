@@ -79,6 +79,8 @@ p.add_argument("--problem", choices=["diffusion", "timoshenko"], default="diffus
 p.add_argument("--degree", type=int, default=1, help="polynomial degree of the local solver")
 p.add_argument("--tau", type=float, default=1.0, help="HDG penalty parameter")
 p.add_argument("-H", type=int, default=4, help="coarse cells per axis over the xy bounding box")
+p.add_argument("--subdomains", choices=["node", "component"], default="node",
+               help="node: patches keep all components of a node (default); component: one patch per component, the reference's repeat variant")
 p.add_argument("--rtol", type=float, default=1e-10)
 p.add_argument("--label", default=None, help="free text copied into the output")
 args = p.parse_args()
@@ -104,13 +106,14 @@ if args.label is not None:
 emit("problem", args.problem)
 emit("degree", args.degree)
 emit("H", args.H)
+emit("subdomains_per", args.subdomains)
 emit("nodes", len(points))
 emit("block_size", block_size)
 emit("dofs", size)
 emit("t_assemble", round(time.time() - t0, 4))
 
 t0 = time.time()
-dec = expand(q1(points, (args.H, args.H)), block_size)      # dofs are hypernode-major: node * block_size + component
+dec = expand(q1(points, (args.H, args.H)), block_size, coupled=args.subdomains == "node")   # dofs: node * block_size + component
 free = np.asarray(abs(A).sum(axis=1)).ravel() != 0           # Dirichlet dofs have empty rows in HyperHDG's system
 dec = restrict(dec, free)
 emit("dirichlet_dofs", int((~free).sum()))

@@ -60,5 +60,6 @@ for log in sys.argv[1:]:
                   {"problem": "diffusion", "degree": degree, "H": 8, "tau": 1.0, "rtol": 1e-10}, res)
     else:
         (res,) = histories(text)
+        # the reference's repeat=6 makes one subdomain per hat AND component (486, not 81)
         write("reproducible_timoshenko_14871_H8_P5", "fiber_network_elastic.py",
-              {"problem": "timoshenko", "degree": 5, "H": 8, "tau": 1.0, "rtol": 1e-10}, res)
+              {"problem": "timoshenko", "degree": 5, "H": 8, "tau": 1.0, "rtol": 1e-10, "subdomains": "component"}, res)
