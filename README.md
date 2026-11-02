@@ -72,6 +72,16 @@ python examples/hyperhdg_q1.py --domain mikado.geo.h5 --problem diffusion -H 4
 python examples/hyperhdg_q1.py --domain mikado.geo.h5 --problem timoshenko --degree 2 -H 4
 ```
 
+`examples/hyperhdg_cube_q1.py` is the same preconditioner on plain HDG diffusion on the unit
+square (HyperHDG's `Cubic<2,2>` topology, its own constant-coefficient test problem): the
+hypernodes are the cell faces at their barycenters, each with degree+1 dofs. A sanity check
+that the method is not tied to networks; the condition number stays near 4 (degree 1) and 7
+(degree 2) from 16 to 256 cells per axis and 4 to 32 coarse cells per axis.
+
+```
+python examples/hyperhdg_cube_q1.py -n 64 --degree 2 -H 8
+```
+
 HyperHDG is the pinned submodule at its `h5-io` branch, which reads `.geo.h5`. The build needs
 HDF5 (`HDF5_ROOT` if it is not on the default search path); `hyperhdg.py` is imported from the
 submodule's `python/` directory, the one path manipulation left, until HyperHDG's Python
