@@ -4,7 +4,7 @@
 reproducibles_python/fiber_network_{diffusion,elastic}.py are the scripts examples/hyperhdg_q1.py
 replaces; they leave HyperHDG (PR-C2), so their CG histories are kept here as
 tests/golden/reproducible_*.json with the provenance inside, and tests/test_hyperhdg.py compares
-the example against them on the identical file tests/data/fiber_network_14871.geo. The scripts
+the example against them on tests/data/fiber_network_14871.geo.h5, the same network. The scripts
 were run on pde22 from HyperHDG at the h5-io tip a5891e3f, unmodified except for the domain
 name (one of the three the script offers) and scipy's tol -> rtol rename; the diffusion script
 loops over degrees 1 and 6, the elastic one is degree 5, both 8 x 8 coarse cells, rtol 1e-10.
@@ -17,7 +17,7 @@ import re
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-NETWORK = "tests/data/fiber_network_14871.geo"
+NETWORK = "tests/data/fiber_network_14871.geo.h5 (the scripts read the .geo it was converted from; same system)"
 SOURCE = ("HyperHDG reproducibles_python/{script} at a5891e3f (h5-io), cython interface, run on pde22; "
           "patched only in the domain name and scipy's tol -> rtol")
 

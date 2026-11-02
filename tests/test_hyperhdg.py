@@ -14,7 +14,7 @@ from support import ROOT, golden
 
 pytestmark = pytest.mark.skipif(os.environ.get("NETPRECOND_HYPERHDG") != "1",
                                 reason="set NETPRECOND_HYPERHDG=1 (compiles HyperHDG modules)")
-NETWORK = ROOT / "tests" / "data" / "fiber_network_14871.geo"
+NETWORK = ROOT / "tests" / "data" / "fiber_network_14871.geo.h5"
 
 
 def run_example(problem, degree, H):
