@@ -60,13 +60,15 @@ coarse cells per axis and grows to 17 with 16 cells, which is the network consta
 finer coarse cells see fewer fibers each. Networks too sparse for a coarse grid make the coarse
 problem singular (empty hats) and such runs are dropped from the plots. One run of either sweep is
 `examples/q1.py --grid N -H H` or `examples/q1.py --domain x.geo.h5 -H H`; it prints YAML as
-it goes, one residual per PCG iteration. The sweeps need GNU parallel, yq, jq and sweepplot,
-and `make_geo` from fiber_network on the PATH for the mikado one.
+it goes, one residual per PCG iteration. The sweeps need GNU parallel, yq and jq; sweepplot and
+fiber_network's `make_geo` come from the pinned submodules, so the generated networks and the
+numbers above are reproducible from a fresh clone.
 
 ## Build
 
 ```
-pip install -e .                                           # in a venv on an externally managed Python
+git submodule update --init                                # fiber_network and sweepplot, pinned
+pip install -r requirements.txt && pip install -e .        # in a venv on an externally managed Python
 export PKG_CONFIG_PATH=<petsc prefix>/lib/pkgconfig      # or PETSC_DIR / PETSC_ARCH
 cmake -B build && cmake --build build
 python -m pytest

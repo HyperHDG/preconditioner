@@ -1,0 +1,6 @@
+[submodule "fiber_network"]
+	path = fiber_network
+	url = https://github.com/HyperHDG/fiber_network.git
+[submodule "sweepplot"]
+	path = sweepplot
+	url = https://github.com/HyperHDG/sweepplot.git

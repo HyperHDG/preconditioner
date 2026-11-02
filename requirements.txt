@@ -3,3 +3,4 @@ scipy
 h5py
 joblib
 pytest
+-e ./fiber_network      # pinned submodule: the networks the sweeps and tests generate depend on its version
