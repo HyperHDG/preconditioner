@@ -25,7 +25,7 @@ done
 parallel -j $JOBS --bar --results $OUT/runs.json \
   "python examples/q1.py --domain $OUT/mikado-{1}.geo.h5 -H {2} --label {1}" ::: $MASSES ::: $HS \
   || true
-yq -i '.Stdout |= from_yaml' $OUT/runs.json
+yq -i '.Stdout |= (select(. != "") | from_yaml) // .' $OUT/runs.json   # the YAML each run printed; a failed run may be empty
 jq -c 'select(.Exitval == 0) | .Stdout | .mass = .label' $OUT/runs.json > $LOG
 
 sweepplot -x nodes -y cond -g H --log x --xbase 2 --save $OUT/cond-nodes.png --tikz $OUT/cond-nodes --nshow < $LOG

@@ -18,7 +18,7 @@ git rev-parse HEAD > $OUT/rev; git diff-index --quiet HEAD || echo dirty >> $OUT
 parallel -j $JOBS --bar --results $OUT/runs.json \
   "python examples/q1.py --grid {1} -H {2}" ::: $NS ::: $HS \
   || true        # parallel exits with the number of failed jobs; the invalid pairs
-yq -i '.Stdout |= from_yaml' $OUT/runs.json                # the YAML each run printed
+yq -i '.Stdout |= (select(. != "") | from_yaml) // .' $OUT/runs.json   # the YAML each run printed; a failed run may be empty
 jq -c 'select(.Exitval == 0) | .Stdout' $OUT/runs.json > $LOG
 
 sweepplot -x nodes -y cond -g H --log x --xbase 2 --ylim 0,20 --save $OUT/cond-nodes.png --tikz $OUT/cond-nodes --nshow < $LOG
