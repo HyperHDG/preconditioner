@@ -18,9 +18,10 @@ LOG=$OUT/data.jsonl
 mkdir -p $OUT
 git rev-parse HEAD > $OUT/rev; git diff-index --quiet HEAD || echo dirty >> $OUT/rev
 
-# the grids, Dirichlet on the whole boundary, which the reference method assumes
+# the grids, Dirichlet on the whole boundary (one node layer: -t 1e-6, the default 2 % band
+# would be several layers on fine grids), which the reference method assumes
 for n in $NS; do
-  [ -e $OUT/grid-$n.geo.h5 ] || $MAKE_GEO --grid $n --dirichlet xmin xmax ymin ymax -o $OUT/grid-$n.geo.h5 > $OUT/grid-$n.log 2>&1
+  [ -e $OUT/grid-$n.geo.h5 ] || $MAKE_GEO --grid $n -t 1e-6 --dirichlet xmin xmax ymin ymax -o $OUT/grid-$n.geo.h5 > $OUT/grid-$n.log 2>&1
 done
 
 parallel -j $JOBS --bar --results $OUT/runs.json \

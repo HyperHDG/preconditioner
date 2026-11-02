@@ -20,8 +20,8 @@ def golden(name):
 
 
 def make_grid(path, n):
-    """An n x n grid on the unit square with Dirichlet on the whole boundary, as .geo.h5."""
-    subprocess.run([sys.executable, str(MAKE_GEO), "--grid", str(n), "--dirichlet", "xmin", "xmax", "ymin", "ymax",
+    """An n x n grid on the unit square with Dirichlet on the boundary node layer, as .geo.h5."""
+    subprocess.run([sys.executable, str(MAKE_GEO), "--grid", str(n), "-t", "1e-6", "--dirichlet", "xmin", "xmax", "ymin", "ymax",
                     "-o", str(path)], check=True, capture_output=True, text=True)
     return path
 
