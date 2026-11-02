@@ -3,7 +3,7 @@
 additive Schwarz preconditioner (the tests show it is the reference), PCG, and the Lanczos
 estimate of the condition number of the preconditioned operator. Output is YAML on stdout, written as the values become available:
 
-    python examples/q1.py --domain grid.geo.h5 -H 8
+    python examples/laplacian_q1.py --domain grid.geo.h5 -H 8
 
 The network is a fiber_network .geo.h5, a grid included (make_geo --grid 65). It needs
 Dirichlet nodes on its whole bounding box (make_geo --dirichlet xmin xmax ymin ymax): the

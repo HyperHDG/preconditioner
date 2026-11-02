@@ -1,4 +1,4 @@
-"""Generation 3 against generation 1: net2as in q1 mode through examples/laplacian.cxx on
+"""Generation 3 against generation 1: net2as in q1 mode through examples/laplacian_net2as.cxx on
 the grid .geo.h5 the reference tests use.
 
 With -net2as_cb_trim (coarse DoFs on the box boundary removed) net2as reproduces the
@@ -13,8 +13,8 @@ import pytest
 
 from support import ROOT, golden
 
-LAPLACIAN = ROOT / "build" / "laplacian"
-pytestmark = pytest.mark.skipif(not LAPLACIAN.exists(), reason="build/laplacian not built (cmake -B build && cmake --build build)")
+LAPLACIAN = ROOT / "build" / "laplacian_net2as"
+pytestmark = pytest.mark.skipif(not LAPLACIAN.exists(), reason="build/laplacian_net2as not built (cmake -B build && cmake --build build)")
 
 
 def run_laplacian(domain, *opts):

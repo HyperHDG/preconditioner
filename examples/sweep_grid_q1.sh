@@ -25,7 +25,7 @@ for n in $NS; do
 done
 
 parallel -j $JOBS --bar --results $OUT/runs.json \
-  "python examples/q1.py --domain $OUT/grid-{1}.geo.h5 -H {2} --label {1}" ::: $NS ::: $HS \
+  "python examples/laplacian_q1.py --domain $OUT/grid-{1}.geo.h5 -H {2} --label {1}" ::: $NS ::: $HS \
   || true        # parallel exits with the number of failed jobs; the invalid pairs
 yq -i '.Stdout |= (select(. != "") | from_yaml) // .' $OUT/runs.json   # the YAML each run printed; a failed run may be empty
 jq -c 'select(.Exitval == 0) | .Stdout | .grid = .label' $OUT/runs.json > $LOG

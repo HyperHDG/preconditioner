@@ -7,3 +7,6 @@
 [submodule "submodules/nanobind"]
 	path = submodules/nanobind
 	url = https://github.com/wjakob/nanobind.git
+[submodule "submodules/HyperHDG"]
+	path = submodules/HyperHDG
+	url = https://github.com/HyperHDG/HyperHDG.git

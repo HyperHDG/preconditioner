@@ -1,4 +1,4 @@
-// laplacian.cxx -- the simplest use of PCNet2AS, PETSc and HDF5 only, no HyperHDG.
+// laplacian_net2as.cxx -- the simplest use of PCNet2AS, PETSc and HDF5 only, no HyperHDG.
 //
 // Graph Laplacian of a .geo.h5 network (fiber_network's make_geo format: /domain/points,
 // /domain/edges, /domain/types_points), unit edge weights or 1/length, Dirichlet rows and
@@ -6,7 +6,7 @@
 // nodes. Solved with CG; the preconditioner is net2as unless -pc_type says otherwise. Every
 // component of the network must contain a Dirichlet node (a grid or a clamped box does).
 //
-//   ./laplacian -domain grid.geo.h5 -net2as_p 3 -net2as_cb_type q1 -net2as_cb_trim
+//   ./laplacian_net2as -domain grid.geo.h5 -net2as_p 3 -net2as_cb_type q1 -net2as_cb_trim
 //
 // prints one JSON line {"domain": .., "nodes": .., "iterations": .., "residuals": [..]} with the
 // true residual norm divided by |b| after every iteration, which tests/ compares with the
