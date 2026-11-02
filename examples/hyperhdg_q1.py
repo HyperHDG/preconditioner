@@ -51,18 +51,22 @@ using TimoshenkoSolver = LocalSolver::TimoshenkoBeam<1, dim, degree, quadrature,
                                                      LocalSolver::TimoschenkoBeamParametersClamped, float_t>;
 
 using Diffusion = Problem<DiffusionSolver>;
-using Timoshenko = Problem<TimoshenkoSolver>;
+{timoshenko_alias}
 
 NB_MODULE({name}, m) {{
   HyperHDG::bind_python<Diffusion>(m, "Diffusion");
-  HyperHDG::bind_python<Timoshenko>(m, "Timoshenko");
+{timoshenko_bind}
 }}
 """
 
 
 def code(dim, degree):
-    """The module source for one (space dimension, degree) instantiation of both problems."""
-    return MODULE.format(dim=dim, degree=degree, quadrature=2 * degree, name=f"netprecond_hdg_D{dim}_P{degree}")
+    """The module source for one (space dimension, degree) instantiation: Diffusion, and
+    Timoshenko beams in three dimensions (the beam solver is 3D only)."""
+    beams = dim == 3
+    return MODULE.format(dim=dim, degree=degree, quadrature=2 * degree, name=f"netprecond_hdg_D{dim}_P{degree}",
+                         timoshenko_alias="using Timoshenko = Problem<TimoshenkoSolver>;" if beams else "",
+                         timoshenko_bind='  HyperHDG::bind_python<Timoshenko>(m, "Timoshenko");' if beams else "")
 
 
 def emit(key, value):
@@ -83,6 +87,8 @@ with h5py.File(args.domain, "r") as f:
     points = f["domain/points"][:]
 dim = points.shape[1]
 module = hyperhdg.load(code(dim, args.degree), hyperhdg=HYPERHDG, cache_dir=ROOT / ".cache" / "hyperhdg")
+if args.problem == "timoshenko" and dim != 3:
+    p.error("Timoshenko beams need a 3D network")
 hdg = getattr(module, args.problem.capitalize())(args.domain, args.tau)
 
 t0 = time.time()

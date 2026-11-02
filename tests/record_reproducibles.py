@@ -7,7 +7,8 @@ tests/golden/reproducible_*.json with the provenance inside, and tests/test_hype
 the example against them on tests/data/fiber_network_14871.geo.h5, the same network. The scripts
 were run on pde22 from HyperHDG at the h5-io tip a5891e3f, unmodified except for the domain
 name (one of the three the script offers) and scipy's tol -> rtol rename; the diffusion script
-loops over degrees 1 and 6, the elastic one is degree 5, both 8 x 8 coarse cells, rtol 1e-10.
+loops over degrees 1 and 6 on a 2D topology (the network projected to the plane), the elastic
+one is degree 5 in 3D, both 8 x 8 coarse cells, rtol 1e-10.
 
     python tests/record_reproducibles.py diffusion-14871.log elastic-14871.log
 """
@@ -17,7 +18,10 @@ import re
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-NETWORK = "tests/data/fiber_network_14871.geo.h5 (the scripts read the .geo it was converted from; same system)"
+# the scripts read domains/fiber_network_14871.geo; the diffusion one instantiates a 2D topology
+# (File<1,2>, Point<2>) and so solves the network projected to the plane, which
+# fiber_network_14871_2d.geo.h5 is; the elastic one is 3D
+NETWORK = {"diffusion": "tests/data/fiber_network_14871_2d.geo.h5", "timoshenko": "tests/data/fiber_network_14871.geo.h5"}
 SOURCE = ("HyperHDG reproducibles_python/{script} at a5891e3f (h5-io), cython interface, run on pde22; "
           "patched only in the domain name and scipy's tol -> rtol")
 
@@ -38,7 +42,7 @@ def histories(text):
 
 
 def write(name, script, settings, residuals):
-    doc = {"source": SOURCE.format(script=script), "network": NETWORK, "settings": settings,
+    doc = {"source": SOURCE.format(script=script), "network": NETWORK[settings["problem"]], "settings": settings,
            "iterations": len(residuals), "residuals": residuals}
     path = ROOT / "tests" / "golden" / f"{name}.json"
     path.write_text(json.dumps(doc, indent=1))
